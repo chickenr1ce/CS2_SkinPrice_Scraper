@@ -1,36 +1,65 @@
-import requests
 from bs4 import BeautifulSoup
 import time
 import random
+from selenium import webdriver
+from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
+
+
+
 
 BASE_URL = "https://skinport.com/de/market?"
+EDGEDRIVER_PATH = './msedgedriver.exe'
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0'
-}
+edge_options = EdgeOptions()
+edge_options.add_argument("--headless")
+edge_options.add_argument("--disable-gpu")
+edge_options.add_argument("--window-size=1920,1080")
+edge_options.add_argument("--log-level=3")
+edge_options.add_argument(f"user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0")
+
+service = EdgeService(executable_path=EDGEDRIVER_PATH)
 
 def get_skin_price(item_identifier):
     """ 
-    Scrapes and parses price for specific skin from skinport.
+    Fetches and parses lowest price for a specific item from Skinport using Selenium and Edge
 
     Args:
-        item_identifier (str): Unique string from config.json that identifies
-        the item on skinport.
+        item_identifier (str): The unique string (from config.json) that
+                               identifies the item on Skinport. This is
+                               often the URL-encoded market_hash_name.
 
     Returns:
         float: The lowest price found for the item, as a float.
-        None: If price could not be found (network error, page structure changed, item not listed).
+        None: If the price could not be found or an error occurred.
 
     """
     target_url = f"{BASE_URL}{item_identifier}"
 
     print(f"Attempting to fetch: {target_url}")
 
+    driver = None
+
     try:
-        response = requests.get(target_url, headers=HEADERS, timeout=20)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        listing_elements = soup.select('.CatalogPage-item.CatalogPage-item--grid')
+        driver = webdriver.Edge(service=service, options=edge_options)
+        driver.get(target_url)
+
+        listing_container_selector = '.CatalogPage-items'
+        listing_item_selector = '.CatalogPage-item.CatalogPage-item--grid'
+        wait_time = 20
+        print(f"Waiting up to {wait_time}s for listing container '{listing_container_selector}'...")
+        WebDriverWait(driver, wait_time).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, listing_item_selector))
+        )
+
+        html_content = driver.page_source
+
+        soup = BeautifulSoup(html_content, 'html.parser')
+        listing_elements = soup.select(listing_item_selector)
+
 
         if not listing_elements:
                 print(f"Warning: No listing elements found for identifier: {item_identifier} at URL: {target_url}")
@@ -40,8 +69,8 @@ def get_skin_price(item_identifier):
         for element in listing_elements:
              price_tag = element.find('div.Tooltip-link')
 
-    except requests.exceptions.RequestException as e:    
-        print(f"Error fetching URL {target_url}: {e}")
+    except TimeoutException:    
+        print(f"Error: Timed out waiting for elements for {item_identifier} at {target_url}")
         return None
 
 if __name__ == "__main__":
