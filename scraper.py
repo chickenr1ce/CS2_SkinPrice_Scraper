@@ -16,7 +16,7 @@ BASE_URL = "https://skinport.com/de/market?"
 EDGEDRIVER_PATH = './msedgedriver.exe'
 
 edge_options = EdgeOptions()
-edge_options.add_argument("--headless")
+#edge_options.add_argument("--headless")
 edge_options.add_argument("--disable-gpu")
 edge_options.add_argument("--window-size=1920,1080")
 edge_options.add_argument("--log-level=3")
@@ -46,14 +46,51 @@ def get_skin_price(item_identifier):
 
     try:
         driver = webdriver.Edge(service=service, options=edge_options)
+
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
         driver.get(target_url)
 
-        listing_container_selector = '.CatalogPage-items'
-        listing_item_selector = '.CatalogPage-item.CatalogPage-item--grid'
-        wait_time = 20
+        # --- COOKIE HANDLING ---
+
+        cookie_wait_time = 10
+        accept_button_selector = 'CookiePopup-button'
+
+        try:        
+            print(f"Waiting up to {cookie_wait_time}s for cookie accept button...")
+            accept_button = WebDriverWait(driver, cookie_wait_time).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, accept_button_selector))
+            )  
+
+            print("Cookie accept button found. Clicking...")
+            accept_button.click()
+            print("Cookie button clicked")
+
+            time.sleep(1)
+
+        except TimeoutException:
+            print("Cookie accept button not found or timed out. Proceeding anyway.")
+        
+        except Exception as cookie_e:
+            print(f"Error handling cookie button: {cookie_e}. Proceeding anyway.")
+
+        #--- END OF COOKIE HANDLING --- 
+
+        listing_container_selector = 'CatalogPage-items'
+        listing_item_selector = 'CatalogPage-item'
+        wait_time = 60
+
         print(f"Waiting up to {wait_time}s for listing container '{listing_container_selector}'...")
-        WebDriverWait(driver, wait_time).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, listing_item_selector))
+        WebDriverWait(driver, wait_time).until(EC.presence_of_all_elements_located((By.CLASS_NAME, listing_container_selector))
         )
+
+        time.sleep(1.5)
+
+        print(f"Waiting up to {wait_time}s for listing items '{listing_item_selector}'...")
+        WebDriverWait(driver,wait_time).until(EC.presence_of_all_elements_located((By.CLASS_NAME,listing_item_selector))
+        )
+
+        print("Listings appear to have loaded.")
 
         html_content = driver.page_source
 
@@ -66,11 +103,20 @@ def get_skin_price(item_identifier):
                 return None
     
         prices = []
-        for element in listing_elements:
-             price_tag = element.find('div.Tooltip-link')
+
+        price_tag_selector = 'div.Tooltip-link'
+
+        print(f"Found {len(listing_elements)} listing elements. Extracting prices...")
 
     except TimeoutException:    
         print(f"Error: Timed out waiting for elements for {item_identifier} at {target_url}")
+        
+        try:
+            screenshot_path = f'timeout_screenshot_{item_identifier}.png'
+            driver.save_screenshot(screenshot_path)
+            print(f"Screenshot saved to {screenshot_path}")
+        except Exception as screen_e:
+            print(f"Could not save screenshot: {screen_e}")
         return None
 
 if __name__ == "__main__":
