@@ -30,15 +30,28 @@ def get_skin_price(item_identifier):
         response = requests.get(target_url, headers=HEADERS, timeout=20)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        listing_elements = soup.select('.CatalogPage-item.CatalogPage-item--grid')
 
-        if not listing_elements:
-                print(f"Warning: No listing elements found for identifier: {item_identifier} at URL: {target_url}")
-                return None
-    
-        prices = []
-        for element in listing_elements:
-             price_tag = element.find('div.Tooltip-link')
+        target_href_suffix = "/well-worn"
+        target_link_selector = f"a.version-link[href$='{target_href_suffix}']"
+
+        print(f"Searching for link with selector: {target_link_selector}")
+
+        target_link = soup.select_one(target_link_selector)
+
+        found_price = None
+
+        if target_link:
+            print (f"Found link for : Well-Worn")
+
+            price_tag_selector = 'div.flex-none span.font-bold'
+            price_tag = target_link.select_one(price_tag_selector)
+            print(f"Price found: {price_tag}")
+
+            if price_tag:
+                price_text = price_tag.text.strip()
+                print(f"\nPrice text: {price_text}")
+
+
 
     except requests.exceptions.RequestException as e:    
         print(f"Error fetching URL {target_url}: {e}")
