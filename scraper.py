@@ -12,7 +12,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 
 
 
-BASE_URL = "https://skinport.com/de/market?"
+BASE_URL = "https://gamerpay.gg/?query="
 EDGEDRIVER_PATH = './msedgedriver.exe'
 
 edge_options = EdgeOptions()
@@ -26,11 +26,11 @@ service = EdgeService(executable_path=EDGEDRIVER_PATH)
 
 def get_skin_price(item_identifier):
     """ 
-    Fetches and parses lowest price for a specific item from Skinport using Selenium and Edge
+    Fetches and parses lowest price for a specific item from CSFloat using Selenium and Edge
 
     Args:
         item_identifier (str): The unique string (from config.json) that
-                               identifies the item on Skinport. This is
+                               identifies the item on CSFloat. This is
                                often the URL-encoded market_hash_name.
 
     Returns:
@@ -76,9 +76,9 @@ def get_skin_price(item_identifier):
 
         #--- END OF COOKIE HANDLING --- 
 
-        listing_container_selector = 'CatalogPage-items'
+        listing_container_selector = '<ng-tns-c2422869881-16'
         listing_item_selector = 'CatalogPage-item'
-        wait_time = 60
+        wait_time = 20
 
         print(f"Waiting up to {wait_time}s for listing container '{listing_container_selector}'...")
         WebDriverWait(driver, wait_time).until(EC.presence_of_all_elements_located((By.CLASS_NAME, listing_container_selector))
@@ -123,7 +123,7 @@ if __name__ == "__main__":
      
      print("--- Starting Scraper Test ---")
 
-     test_identifier = "cat=Knife&item=Black+Laminate&type=Karambit&exterior=5"
+     test_identifier = "karambit+black+laminate&wear=Well-Worn&page=1"
 
      price = get_skin_price(test_identifier)
 
