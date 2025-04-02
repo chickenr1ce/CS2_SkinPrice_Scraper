@@ -2,12 +2,27 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import random
+import json
 
 BASE_URL = "https://csgoskins.gg/items/"
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0'
 }
+
+try:
+    config = open('config.json')
+    print("Config opened!\n")
+
+    myjson = json.load(config)
+    print(f"Config loaded: {myjson}\n")
+    item_wear = myjson['wear']
+    
+
+
+except ValueError:
+    print("Error loading json.\n")
+
 
 def get_skin_price(item_identifier):
     """ 
@@ -31,7 +46,10 @@ def get_skin_price(item_identifier):
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        target_href_suffix = "/well-worn"
+        wear_condition = "Well Worn"
+        wear_slug = wear_condition.lower().replace(' ', '-')
+
+        target_href_suffix = f"/{wear_slug}"
         target_link_selector = f"a.version-link[href$='{target_href_suffix}']"
 
         print(f"Searching for link with selector: {target_link_selector}")
